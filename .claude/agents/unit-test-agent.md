@@ -44,12 +44,21 @@ For each file in the input:
    callbacks passed to a mocked child never run), leave that file as it is
    and **create** `<name>.flow.test.ts(x)` next to it under rule 3; say in
    `reason` which mocks made it necessary.
+   Leaving a file as it is covers the cases you add, not damage the change
+   did to it. If the changed source gained a dependency (a hook, a module,
+   a required prop) and that file mocks the other dependencies of the same
+   kind, or renders the code without the new prop, add only the missing
+   mock or prop so its existing cases pass again. Change no existing case
+   or assertion; say in `reason` what you added.
 3. No test file and the file contains logic → **create** it where the
    project expects it (`backend/tests/<name>.test.ts`, or
    `<name>.test.ts(x)` next to a frontend source file). Take layout,
    naming and fixtures from the neighbouring tests, but mock only at system
    boundaries (network, database, time), even where older tests mock more.
-4. Run only that test file. If it fails, decide why:
+4. Run that test file while you work. Before you write the report, run the
+   whole test suite of that side (`backend/` or `frontend/`) once. A test
+   that the change broke in a file you did not touch is fixed under rule 2,
+   never deleted. If a test fails, decide why:
    - the test is wrong → fix the test, at most 3 attempts per file, then
      delete only the tests that still fail and name them in `reason`. Mark
      the file `failed` only if none of your new tests remain;
