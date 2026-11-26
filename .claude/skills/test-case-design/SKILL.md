@@ -30,7 +30,7 @@ your reply before the first Edit or Write of a test file.
 |---|---|
 | Happy path | create a task, render the list |
 | Empty | empty list, blank title, missing optional field |
-| Boundary | title 120 vs 121 characters, description 2000 vs 2001, leap day |
+| Boundary | title 120 vs 121 characters, description 2000 vs 2001, leap day; for a text length limit also try emoji, since JS `.length` counts an emoji as 2 while the API contract counts characters |
 | Invalid input | malformed date, unknown priority, non-numeric id → 422 (a missing task is 404) |
 | Dependency failure | repository throws, `fetch` rejects, error body is not JSON |
 | Repeated calls | double submit of a mutation, abort mid-request |
