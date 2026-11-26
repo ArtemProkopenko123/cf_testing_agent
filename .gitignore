@@ -16,8 +16,9 @@ coverage/
 .env.*
 !.env.example
 
-# Unit test agent report
+# Unit test agent files
 agent-report.json
+manifest.json
 
 # Logs
 *.log
