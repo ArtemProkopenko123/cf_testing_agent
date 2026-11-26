@@ -85,6 +85,8 @@ npm run build
 npm start
 ```
 
+Bulk cleanup: `DELETE /api/todos?completed=true` removes every completed task and returns `{ "count": <deleted>, "ids": [<deleted ids>] }`. Without `completed=true` it answers 422.
+
 ### Database (Prisma ORM)
 
 Schema — `backend/prisma/schema.prisma`. Connection — root `.env`.

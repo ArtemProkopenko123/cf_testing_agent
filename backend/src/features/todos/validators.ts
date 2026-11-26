@@ -19,6 +19,7 @@ export const updateSchema = z.strictObject(fields).partial().refine(
   (value) => Object.keys(value).length > 0,
   'Provide at least one field to update.',
 );
+export const clearCompletedSchema = z.strictObject({ completed: z.literal('true') });
 export const idSchema = z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 export const todoSchema = createSchema.extend({
   id: z.number().int().positive(),

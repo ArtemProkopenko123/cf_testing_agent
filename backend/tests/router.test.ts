@@ -5,7 +5,7 @@ import { createTodosRouter } from '../src/features/todos/router.ts';
 import { todo } from './fixture.ts';
 
 function setup() {
-  const repository = { list: vi.fn().mockResolvedValue([todo]), create: vi.fn().mockResolvedValue(todo), get: vi.fn(), update: vi.fn(), delete: vi.fn() };
+  const repository = { list: vi.fn().mockResolvedValue([todo]), create: vi.fn().mockResolvedValue(todo), get: vi.fn(), update: vi.fn(), delete: vi.fn(), deleteCompleted: vi.fn().mockResolvedValue({ count: 0, ids: [] }) };
   const app = express();
   app.use(express.json());
   app.use('/api/todos', createTodosRouter(repository));
@@ -99,6 +99,22 @@ it('accepts a title of exactly 120 characters', async () => {
   expect(response.status).toBe(201);
   expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ title }));
 });
+it('clears completed tasks and returns the deleted count', async () => {
+  const { app, repository } = setup();
+  repository.deleteCompleted.mockResolvedValueOnce({ count: 3, ids: [4, 5, 9] });
+  const response = await request(app).delete('/api/todos?completed=true');
+  expect(response.status).toBe(200);
+  expect(response.body).toEqual({ count: 3, ids: [4, 5, 9] });
+  expect(repository.deleteCompleted).toHaveBeenCalledOnce();
+});
+it.each(['', '?completed=false', '?completed=maybe', '?completed=true&extra=1', '?other=1'])(
+  'rejects bulk delete with query "%s" with 422 and deletes nothing', async (query) => {
+    const { app, repository } = setup();
+    const response = await request(app).delete(`/api/todos${query}`);
+    expect(response.status).toBe(422);
+    expect(repository.deleteCompleted).not.toHaveBeenCalled();
+  },
+);
 it('rejects a description longer than 2000 characters without calling the repository', async () => {
   const { app, repository } = setup();
   const response = await request(app).post('/api/todos').send({ title: 'Task', description: 'x'.repeat(2001) });

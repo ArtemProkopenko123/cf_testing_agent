@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createSchema, updateSchema, idSchema, todoSchema } from '../src/features/todos/validators.ts';
+import { createSchema, updateSchema, idSchema, todoSchema, clearCompletedSchema } from '../src/features/todos/validators.ts';
 import { todo } from './fixture.ts';
 
 describe('todo validation', () => {
@@ -32,6 +32,12 @@ describe('todo validation', () => {
   it.each(['0', '-1', '1.5', 'abc', '9007199254740992'])('rejects invalid id %s', (id) => {
     expect(idSchema.safeParse(id).success).toBe(false);
   });
+  it('accepts the clear-completed query completed=true', () => {
+    expect(clearCompletedSchema.safeParse({ completed: 'true' }).success).toBe(true);
+  });
+  it.each([{}, { completed: 'false' }, { completed: true }, { completed: 'true', extra: '1' }])(
+    'rejects clear-completed query %j', (input) => expect(clearCompletedSchema.safeParse(input).success).toBe(false),
+  );
   it('parses positive ids and validates the response schema', () => {
     expect(idSchema.parse('12')).toBe(12);
     expect(todoSchema.parse(todo)).toEqual(todo);
