@@ -62,6 +62,8 @@ jobs:
     # Its tests leave this job only as a patch; the verify job decides what happens next.
     env:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    outputs:
+      has_patch: ${{ steps.collect.outputs.has_patch }}
     steps:
       - name: Check the model token
         id: token
@@ -134,11 +136,13 @@ jobs:
           echo "Token hidden from all $(wc -l < "$probe") shell commands the agent ran."
 
       - name: Collect the agent's changes
+        id: collect
         if: always() && steps.token.outputs.enabled == 'true'
         run: |
           rm -f package.json
           git add -A --intent-to-add
           git diff --binary > "$RUNNER_TEMP/agent.patch"
+          if [ -s "$RUNNER_TEMP/agent.patch" ]; then echo "has_patch=true" >> "$GITHUB_OUTPUT"; fi
           echo "## Test agent: report" >> "$GITHUB_STEP_SUMMARY"
           if [ -f "$RUNNER_TEMP/agent-report.json" ]; then
             jq -r '"Status: \(.status)", "", "| File | Decision | Result | Tests |", "|---|---|---|---|", (.files[] | "| `\(.path)` | \(.decision) | \(.result // "-") | \(.tests_added // "-") |")' \
@@ -158,5 +162,70 @@ jobs:
             ${{ runner.temp }}/agent-run.json
             ${{ runner.temp }}/agent-stderr.log
             ${{ runner.temp }}/env-probe.log
+          retention-days: 14
+          if-no-files-found: warn
+
+  verify:
+    name: Verify the tests
+    needs: agent
+    if: needs.agent.outputs.has_patch == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # No secrets here: plain checks decide whether the agent's tests can be trusted.
+    outputs:
+      passed: ${{ steps.verify.outputs.passed }}
+    steps:
+      - name: Checkout the pull request
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci --prefix backend
+          npm ci --prefix frontend
+
+      - name: Check the verify script
+        run: node --test scripts/verify-agent.test.mjs
+
+      - name: Download manifest
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: manifest
+          path: ${{ runner.temp }}/manifest
+
+      - name: Download the agent's output
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: agent-output
+          path: ${{ runner.temp }}/agent
+
+      - name: Verify
+        id: verify
+        env:
+          PATCH: ${{ runner.temp }}/agent/agent.patch
+          REPORT: ${{ runner.temp }}/agent/agent-report.json
+          MANIFEST: ${{ runner.temp }}/manifest/manifest.json
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          RESULT: ${{ runner.temp }}/verify-result.json
+        run: node scripts/verify-agent.mjs
+
+      - name: Upload the verify result
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: verify-result
+          path: ${{ runner.temp }}/verify-result.json
           retention-days: 14
           if-no-files-found: warn
