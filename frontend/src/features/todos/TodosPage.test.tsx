@@ -66,3 +66,77 @@ it('displays a query failure and resets mutation errors before retrying', async 
     refetch.mock.invocationCallOrder[0],
   )
 })
+
+function mockPage({
+  query = {},
+  mutationError = null,
+  busy = false,
+}: {
+  query?: Record<string, unknown>
+  mutationError?: Error | null
+  busy?: boolean
+}) {
+  vi.mocked(useTodosQuery).mockReturnValue({
+    data: [],
+    isPending: false,
+    isFetching: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+    ...query,
+  } as unknown as ReturnType<typeof useTodosQuery>)
+  vi.mocked(useUpdateTodoMutation).mockReturnValue({
+    error: mutationError,
+    reset: vi.fn(),
+    mutateAsync: vi.fn(),
+  } as unknown as ReturnType<typeof useUpdateTodoMutation>)
+  vi.mocked(useTodosBusy).mockReturnValue(busy)
+  vi.mocked(useNotice).mockReturnValue({ message: '', notify: vi.fn() })
+  vi.mocked(useTodoFilters).mockReturnValue({
+    filter: 'all',
+    search: '',
+    sort: 'newest',
+    visible: [],
+    setFilter: vi.fn(),
+    setSearch: vi.fn(),
+    setSort: vi.fn(),
+  })
+}
+
+it('shows a failed task update in the page alert', () => {
+  mockPage({ mutationError: new Error('Could not update the task.') })
+  render(<TodosPage />)
+  expect(screen.getByTestId('alert')).toHaveTextContent(
+    'Could not update the task.',
+  )
+})
+
+it('shows no alert when neither the list nor an update failed', () => {
+  mockPage({})
+  render(<TodosPage />)
+  expect(screen.queryByTestId('alert')).not.toBeInTheDocument()
+})
+
+it('disables Try again while the list is refetching', () => {
+  mockPage({
+    query: {
+      isError: true,
+      isFetching: true,
+      error: new Error('The server is unavailable.'),
+    },
+  })
+  render(<TodosPage />)
+  expect(screen.getByRole('button', { name: 'Try again' })).toBeDisabled()
+})
+
+it('disables Try again while another task operation is busy', () => {
+  mockPage({
+    query: {
+      isError: true,
+      error: new Error('The server is unavailable.'),
+    },
+    busy: true,
+  })
+  render(<TodosPage />)
+  expect(screen.getByRole('button', { name: 'Try again' })).toBeDisabled()
+})
