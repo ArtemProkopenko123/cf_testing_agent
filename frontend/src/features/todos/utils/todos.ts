@@ -6,9 +6,9 @@ const priorityOrder = { high: 0, medium: 1, low: 2 }
 export function validateTodo(input: TodoInput): Record<string, string> {
   const errors: Record<string, string> = {}
   if (!input.title.trim()) errors.title = 'Enter a task title.'
-  else if (input.title.trim().length > 120)
+  else if (Array.from(input.title.trim()).length > 120)
     errors.title = 'The title must be at most 120 characters.'
-  if (input.description.trim().length > 2000)
+  if (Array.from(input.description.trim()).length > 2000)
     errors.description = 'The description must be at most 2000 characters.'
   if (input.due_date) {
     const date = new Date(`${input.due_date}T00:00:00Z`)
