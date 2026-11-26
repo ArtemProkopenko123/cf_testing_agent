@@ -22,6 +22,7 @@ test('skips files with nothing to unit test', () => {
     'frontend/src/design-system/components/Button/Button.stories.tsx',
     'backend/src/generated/prisma/client.ts',
     'frontend/src/main.tsx',
+    'backend/src/main.ts',
     'frontend/src/features/todos/api/queryKeys.ts',
   ];
   for (const path of skipped) assert.equal(classify(path).target, false, path);
