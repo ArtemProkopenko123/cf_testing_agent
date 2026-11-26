@@ -20,6 +20,7 @@ const NOT_TESTABLE = [
   [/\.stories\.tsx?$/, 'Storybook story'],
   [/(^|\/)constants\.tsx?$|\.constants\.ts$/, 'constants only'],
   [/^backend\/src\/generated\//, 'generated code'],
+  [/^backend\/src\/main\.ts$/, 'entry point, excluded from coverage'],
   [/^frontend\/src\/design-system\//, 'design system, excluded from coverage'],
   [/^frontend\/src\/main\.tsx$/, 'entry point, excluded from coverage'],
   [/^frontend\/src\/features\/todos\/api\/queryKeys\.ts$/, 'query keys, excluded from coverage'],
