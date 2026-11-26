@@ -21,7 +21,7 @@ export function DeleteTodoDialog({
       await deleteTodo.mutateAsync(todo.id)
       onDeleted()
     } catch {
-      // Keep confirmation open so the server error is visible and retry is possible.
+      // Keep confirmation open so the server error is shown and retry is possible.
     }
   }
   return (
