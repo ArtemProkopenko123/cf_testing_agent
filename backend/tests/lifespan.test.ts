@@ -87,6 +87,14 @@ it('rejects and disconnects when schema creation fails', async () => {
   expect(fake.$disconnect).toHaveBeenCalledOnce();
 });
 
+it('rejects with the real listen error and disconnects when the port is taken', async () => {
+  const { server: occupier } = await startServer();
+  vi.stubEnv('API_PORT', String((occupier.address() as AddressInfo).port));
+  fake.$disconnect.mockClear();
+  await expect(start()).rejects.toMatchObject({ code: 'EADDRINUSE' });
+  expect(fake.$disconnect).toHaveBeenCalledOnce();
+});
+
 it.each(['SIGTERM', 'SIGINT'])('closes the server and disconnects on %s', async (signal) => {
   const { server } = await startServer();
   shutdownHandler(signal)();
