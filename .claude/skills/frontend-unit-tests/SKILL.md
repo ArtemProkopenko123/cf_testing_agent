@@ -83,6 +83,9 @@ beforeAll(() => {
 
 - Mock `request`, `todosApi`, our hooks or the design system in a new file.
 - Use `fireEvent` where `userEvent` works.
+- Type long text with `user.type`: it sends one event per character and
+  times out on a slow CI runner. For more than a few dozen characters, click
+  the field and use `user.paste(text)`.
 - Wait with `setTimeout`; use `findBy*` or `waitFor`.
 
 Read `references/react-query-hooks.md` when testing a query or mutation
