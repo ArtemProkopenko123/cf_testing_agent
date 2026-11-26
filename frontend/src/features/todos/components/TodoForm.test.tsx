@@ -58,7 +58,8 @@ describe('TodoForm', () => {
         error={null}
       />,
     )
-    await user.type(screen.getByLabelText(/Task title/), 'a'.repeat(121))
+    await user.click(screen.getByLabelText(/Task title/))
+    await user.paste('a'.repeat(121))
     await user.click(screen.getByRole('button', { name: 'Save task' }))
     expect(
       screen.getByText('The title must be at most 120 characters.'),
@@ -77,7 +78,8 @@ describe('TodoForm', () => {
         error={null}
       />,
     )
-    await user.type(screen.getByLabelText(/Task title/), 'a'.repeat(120))
+    await user.click(screen.getByLabelText(/Task title/))
+    await user.paste('a'.repeat(120))
     await user.click(screen.getByRole('button', { name: 'Save task' }))
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'a'.repeat(120) }),
@@ -96,10 +98,8 @@ describe('TodoForm', () => {
       />,
     )
     await user.type(screen.getByLabelText(/Task title/), 'Prepare a demo')
-    await user.type(
-      screen.getByLabelText(/Description/),
-      'd'.repeat(2001),
-    )
+    await user.click(screen.getByLabelText(/Description/))
+    await user.paste('d'.repeat(2001))
     await user.click(screen.getByRole('button', { name: 'Save task' }))
     expect(
       screen.getByText('The description must be at most 2000 characters.'),
