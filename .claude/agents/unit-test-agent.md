@@ -2,7 +2,7 @@
 name: unit-test-agent
 description: Writes or updates Vitest unit tests for changed source files in backend/ or frontend/ and records a decision per file in agent-report.json. Use when raising test coverage or testing the changes of a pull request.
 tools: Read, Grep, Glob, Edit, Write, Bash, Skill
-model: claude-haiku-5-5
+model: claude-sonnet-5-5
 maxTurns: 40
 skills: test-case-design
 ---
