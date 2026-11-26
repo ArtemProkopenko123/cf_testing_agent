@@ -27,3 +27,27 @@ it('sends only writable task fields on creation', async () => {
     }),
   })
 })
+
+it('sends only the changed fields when updating a task', async () => {
+  vi.mocked(request).mockResolvedValue({ ...todoFixture, completed: true })
+  await todosApi.update(7, { completed: true })
+  expect(request).toHaveBeenCalledWith('/todos/7', {
+    method: 'PATCH',
+    body: '{"completed":true}',
+  })
+})
+
+it('sends a cleared due date as null when updating a task', async () => {
+  vi.mocked(request).mockResolvedValue(todoFixture)
+  await todosApi.update(7, { due_date: null })
+  expect(request).toHaveBeenCalledWith('/todos/7', {
+    method: 'PATCH',
+    body: '{"due_date":null}',
+  })
+})
+
+it('deletes a task with DELETE on its own URL', async () => {
+  vi.mocked(request).mockResolvedValue(undefined)
+  await todosApi.remove(7)
+  expect(request).toHaveBeenCalledWith('/todos/7', { method: 'DELETE' })
+})
