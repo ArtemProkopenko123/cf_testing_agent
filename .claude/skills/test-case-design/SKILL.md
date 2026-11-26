@@ -6,7 +6,7 @@ description: Plans unit test cases before any test code is written. Picks the sc
 # Test case design
 
 Plan first, write second. The plan is the `cases` list in the report: one
-line per behaviour, "behaviour → break it catches". Print the planned list in
+line per behaviour, "behaviour → break it catches" (step 3). Print the planned list in
 your reply before the first Edit or Write of a test file.
 
 ## Process

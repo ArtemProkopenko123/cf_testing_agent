@@ -10,8 +10,8 @@ skills: test-case-design
 ## Role and goal
 
 You add unit tests for the source files you are given. In CI the list comes
-from `manifest.json` (path in the prompt) together with the PR title and
-description; locally the user names the files. You finish with passing test
+from `manifest.json`, the list of changed files that the workflow prepares
+(path in the prompt), together with the PR title and description; locally the user names the files. You finish with passing test
 files and a report at the path given in the prompt. CI passes a path
 outside the repo; locally the default is `agent-report.json` in the repo
 root, which git ignores.
@@ -23,9 +23,9 @@ root, which git ignores.
 - Edit, Write: only test files (`backend/tests/**`, `frontend/src/**/*.test.ts(x)`)
   and shared fixtures (`backend/tests/fixture.ts`, `frontend/src/test/**`).
   Never touch source, config or package files.
-- Bash: only `cd backend|frontend && npx vitest run <test file> --reporter=dot`
-  and `cd backend|frontend && npx tsc --noEmit`. No pipes or chained
-  commands. The shell keeps its working directory between calls.
+- Bash: only `cd backend && npx vitest run <test file> --reporter=dot` and
+  `cd backend && npx tsc --noEmit`, or the same with `frontend`. No pipes or
+  chained commands. The shell keeps its working directory between calls.
 - Skill: `test-case-design` is preloaded; plan every file with it. Load
   `backend-unit-tests` before writing a backend test and
   `frontend-unit-tests` before writing a frontend test.
@@ -40,6 +40,10 @@ For each file in the input:
    with a one-line reason.
 2. A test file for it already exists → **update**: add cases for the changed
    behaviour. Keep every existing case, assertion and mock in that file.
+   If those mocks hide the behaviour you need to test (for example,
+   callbacks passed to a mocked child never run), leave that file as it is
+   and **create** `<name>.flow.test.ts(x)` next to it under rule 3; say in
+   `reason` which mocks made it necessary.
 3. No test file and the file contains logic → **create** it where the
    project expects it (`backend/tests/<name>.test.ts`, or
    `<name>.test.ts(x)` next to a frontend source file). Take layout,
@@ -95,7 +99,8 @@ final decision, `partial` when any file ended `failed`, `env_error` when you
 stopped early. A `suspected_bug` is a finding, not a failure. File `result`
 is `passed`, `failed`, `suspected_bug`, or `not_run` (only with
 `env_error`). `tests_added` counts only the tests you kept; `cases` has one
-line per behaviour: what it does and the break it catches. Variants of one
+line per behaviour: what it does and the break it catches (the change to the
+source that would make it fail). Variants of one
 behaviour (an `it.each` table) share a line that ends with "(N tests)". `typecheck`
 lists only the folders you touched. `error` holds
 the first error line on `env_error`, else null.

@@ -1,6 +1,6 @@
 ---
 name: frontend-unit-tests
-description: Writes Vitest and Testing Library unit tests for the React frontend in frontend/src. Covers which seam to test each file through, faking the network with a fetch stub, rendering with the real design system and testing React Query hooks. Use when creating or updating a *.test.ts(x) file in frontend/src.
+description: Writes Vitest and Testing Library unit tests for the React frontend in frontend/src. Covers which entry point to test each file through, faking the network with a fetch stub, rendering with the real design system and testing React Query hooks. Use when creating or updating a *.test.ts(x) file in frontend/src.
 ---
 
 # Frontend unit tests
@@ -9,13 +9,13 @@ Tests sit next to the source as `<name>.test.ts(x)` and import from
 `vitest` explicitly. Fixture: `todoFixture` from `src/test/todoFixture.ts`;
 build variants by spreading (`{ ...todoFixture, id: 1, completed: true }`).
 
-## Pick the seam by file
+## Pick the entry point by file
 
 | File | Test through | Fake |
 |---|---|---|
 | `features/*/utils/*.ts` | direct call | the clock, when the result depends on today |
 | `lib/http.ts`, `features/*/api/*.ts` | call the function | `fetch` |
-| React Query hooks (`features/*/hooks/use*Query.ts`, `use*Mutation.ts`, `useTodosBusy.ts`) | `renderHook` + providers wrapper | `fetch` |
+| React Query hooks (`features/*/hooks/use*Query.ts`, `use*Mutation.ts`, `useTodosBusy.ts`) | `renderHook` with the `wrapper` from `setup()` below | `fetch` |
 | other hooks (`useNotice.ts`, `useTodoFilters.ts`) | `renderHook` | fake timers when time matters |
 | components | `render` inside providers, `userEvent`, queries by role and text | `fetch` |
 | `app/AppProviders.tsx` | render a child that reads the query client and the theme | nothing |
@@ -23,7 +23,11 @@ build variants by spreading (`{ ...todoFixture, id: 1, completed: true }`).
 
 New test files fake only the network (`fetch`) and time. They render the
 real design system and real hooks. An existing test file that mocks
-`design-system/mocks` or our own hooks keeps those mocks.
+`design-system/mocks` or our own hooks keeps those mocks. When those mocks
+hide what you need to test, put the new cases in `<name>.flow.test.tsx`:
+render the real children, drive them with `userEvent` the way a user would
+(open the form, submit, confirm the delete) and check the result on screen
+and in the requests sent to `fetch`.
 
 ## Templates
 

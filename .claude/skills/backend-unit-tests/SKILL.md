@@ -1,6 +1,6 @@
 ---
 name: backend-unit-tests
-description: Writes Vitest unit tests for the Express + Prisma backend in backend/src without a database. Covers which seam to test each file through, how to fake Prisma, Supertest requests and env handling. Use when creating or updating a test in backend/tests/.
+description: Writes Vitest unit tests for the Express + Prisma backend in backend/src without a database. Covers which entry point to test each file through, how to fake Prisma, Supertest requests and env handling. Use when creating or updating a test in backend/tests/.
 ---
 
 # Backend unit tests
@@ -10,13 +10,13 @@ Tests live flat in `backend/tests/<source name>.test.ts`, import from
 (`'../src/features/todos/router.ts'`). Fixtures: `record` (database row)
 and `todo` (API shape) from `tests/fixture.ts`.
 
-## Pick the seam by file
+## Pick the entry point by file
 
 | File | Test through | Fake |
 |---|---|---|
 | `features/*/validators.ts`, `mappers.ts` | direct call | nothing |
 | `core/config.ts` | `resolveDatabaseUrl()` | env via `vi.stubEnv` |
-| `features/*/repository.ts` | repository methods | Prisma delegate (`vi.spyOn(database.todo, …)`) |
+| `features/*/repository.ts` | repository methods | Prisma delegate, the per-table object `database.todo` (`vi.spyOn(database.todo, …)`) |
 | `features/*/router.ts` | Supertest on `express()` + router | existing file uses a `vi.fn()` `TodoStore`: keep it there |
 | `api/*.ts`, `factory.ts` | Supertest on `createApp(database)` | Prisma delegate |
 | `core/database.ts` (`initialize`) | `initialize(database)` | `vi.spyOn(database, '$executeRaw')` |
