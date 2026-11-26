@@ -63,6 +63,7 @@ jobs:
     env:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
     outputs:
+      enabled: ${{ steps.token.outputs.enabled }}
       has_patch: ${{ steps.collect.outputs.has_patch }}
     steps:
       - name: Check the model token
@@ -229,3 +230,111 @@ jobs:
           path: ${{ runner.temp }}/verify-result.json
           retention-days: 14
           if-no-files-found: warn
+
+  publish:
+    name: Publish results
+    needs: [analyze, agent, verify]
+    if: always() && needs.analyze.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # The only job that can write. It never runs code from the pull request:
+    # it applies the verified patch as data, pushes it and posts a comment.
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Download manifest
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: manifest
+          path: ${{ runner.temp }}/manifest
+
+      - name: Download the agent's output
+        if: needs.agent.outputs.enabled == 'true'
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: agent-output
+          path: ${{ runner.temp }}/agent
+
+      - name: Download the verify result
+        if: needs.verify.result == 'success' || needs.verify.result == 'failure'
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: verify-result
+          path: ${{ runner.temp }}/verify
+
+      - name: Checkout the pull request branch
+        if: needs.verify.outputs.passed == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          # Kept only in this job so that the push below can authenticate.
+          persist-credentials: true
+
+      - name: Commit the agent's tests
+        id: commit
+        if: needs.verify.outputs.passed == 'true'
+        run: |
+          git apply "$RUNNER_TEMP/agent/agent.patch"
+          git add -A
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "test: add tests from the unit test agent" \
+            -m "Verified in the Test agent workflow: only test files, typecheck, all tests and coverage thresholds pass." \
+            -m "[unit-test-agent]"
+          git push -q
+          echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HAS_TARGETS: ${{ needs.analyze.outputs.has_targets }}
+          AGENT_ENABLED: ${{ needs.agent.outputs.enabled }}
+          VERIFY_PASSED: ${{ needs.verify.outputs.passed }}
+          COMMIT_SHA: ${{ steps.commit.outputs.sha }}
+        # Written inline on purpose: a script from the branch would be pull request code running with a write token.
+        run: |
+          manifest="$RUNNER_TEMP/manifest/manifest.json"
+          report="$RUNNER_TEMP/agent/agent-report.json"
+          verify="$RUNNER_TEMP/verify/verify-result.json"
+          body="$RUNNER_TEMP/comment.md"
+          {
+            echo '<!-- unit-test-agent -->'
+            echo '## Unit test agent'
+            echo
+            if [ "$HAS_TARGETS" != "true" ]; then
+              echo 'No source files to test in this pull request.'
+              jq -r 'if (.skipped | length) > 0 then "", "| Skipped file | Reason |", "|---|---|", (.skipped[] | "| `\(.path)` | \(.reason) |") else empty end' "$manifest"
+            elif [ "$AGENT_ENABLED" != "true" ]; then
+              echo 'The agent did not run: the CLAUDE_CODE_OAUTH_TOKEN secret is not set.'
+            elif [ ! -f "$report" ]; then
+              echo 'The agent wrote no report. See the workflow run for details.'
+            else
+              if [ -n "$COMMIT_SHA" ]; then echo "Verify passed, so the agent's tests are committed in $COMMIT_SHA."
+              elif [ "$VERIFY_PASSED" = "false" ]; then echo 'Verify failed, so the tests were not committed.'
+              else echo 'The agent added no tests.'; fi
+              echo
+              jq -r '"Agent status: \(.status)", "", "| File | Decision | Result | Tests | Reason |", "|---|---|---|---|---|",
+                (.files[] | "| `\(.path)` | \(.decision) | \(.result // "-") | \(.tests_added // "-") | \(.reason | gsub("\n"; " ") | gsub("\\|"; "/")) |")' "$report"
+              jq -r 'if (.suspected_bugs | length) > 0 then "", "### Suspected bugs", "", (.suspected_bugs[] | "- `\(.path)`: expected \(.expected) Actual: \(.actual)") else empty end' "$report"
+              jq -r '[.files[] | select(.cases)] | if length > 0 then "", "<details><summary>Planned cases</summary>", "", (.[] | "**\(.path)**", "", (.cases[] | "- \(.)"), ""), "</details>" else empty end' "$report"
+              if [ -f "$verify" ]; then
+                jq -r '"", "### Verify", "", "| Check | Result |", "|---|---|", (.checks[] | "| \(.name) | \(if .ok then "pass" else "FAIL" end) |"), (.warnings[] | "", "Warning: \(.)")' "$verify"
+              fi
+            fi
+            echo
+            echo "[Workflow run]($RUN_URL)"
+          } > "$body"
+          cat "$body" >> "$GITHUB_STEP_SUMMARY"
+          # One comment per pull request, updated on every run.
+          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq '.[] | select(.body | startswith("<!-- unit-test-agent -->")) | .id' | head -n 1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@"$body" > /dev/null
+          else
+            gh api "repos/$REPO/issues/$PR/comments" -F body=@"$body" > /dev/null
+          fi
