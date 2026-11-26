@@ -110,6 +110,20 @@ describe('validateTodo', () => {
     })
   })
 
+  it('counts an emoji as one character in a 120-character title', () => {
+    expect(validateTodo(draft({ title: '😀'.repeat(120) }))).toEqual({})
+  })
+
+  it('rejects a title of 121 emoji', () => {
+    expect(validateTodo(draft({ title: '😀'.repeat(121) }))).toEqual({
+      title: 'The title must be at most 120 characters.',
+    })
+  })
+
+  it('counts an emoji as one character in a 2000-character description', () => {
+    expect(validateTodo(draft({ description: '😀'.repeat(2000) }))).toEqual({})
+  })
+
   it('rejects a due date that does not exist in the calendar', () => {
     expect(validateTodo(draft({ due_date: '2026-02-30' }))).toEqual({
       due_date: 'Enter a valid date.',
