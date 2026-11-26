@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Runs unit-test-agent headless with the same restrictions locally and in CI.
-# Usage: scripts/run-agent.sh "<prompt>"   (MAX_TURNS overrides the turn limit)
+# Usage: scripts/run-agent.sh "<prompt>"
+#   MAX_TURNS overrides the turn limit; AGENT_SETTINGS adds a settings file (CI hooks).
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
@@ -8,9 +9,12 @@ cd "$(git rev-parse --show-toplevel)"
 # read the environment. Strip the model token from every subprocess.
 export CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1
 
+extra=()
+if [[ -n "${AGENT_SETTINGS:-}" ]]; then extra+=(--settings "$AGENT_SETTINGS"); fi
+
 # Bash rules match each part of a compound command separately,
 # so `cd frontend && npx vitest run x` needs both `cd` and `npx` rules.
-exec claude -p --agent unit-test-agent \
+exec claude -p --agent unit-test-agent ${extra[@]+"${extra[@]}"} \
   --permission-mode dontAsk \
   --allowedTools Read Grep Glob Edit Write Skill \
     "Bash(cd backend)" "Bash(cd frontend)" \
