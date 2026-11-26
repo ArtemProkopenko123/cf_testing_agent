@@ -34,16 +34,16 @@ afterEach(() => {
 })
 
 describe('useClearCompletedMutation', () => {
-  it('sends DELETE to /api/todos?completed=true and resolves with the count', async () => {
+  it('sends DELETE to /api/todos?completed=true and resolves with the count and ids', async () => {
     const { wrapper } = setup()
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ count: 2 }), { status: 200 }),
+      new Response(JSON.stringify({ count: 2, ids: [8, 9] }), { status: 200 }),
     )
     const { result } = renderHook(() => useClearCompletedMutation(), {
       wrapper,
     })
 
-    let data: { count: number } | undefined
+    let data: { count: number; ids: number[] } | undefined
     await act(async () => {
       data = await result.current.mutateAsync()
     })
@@ -51,14 +51,14 @@ describe('useClearCompletedMutation', () => {
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe('/api/todos?completed=true')
     expect(init.method).toBe('DELETE')
-    expect(data).toEqual({ count: 2 })
+    expect(data).toEqual({ count: 2, ids: [8, 9] })
   })
 
-  it('drops only completed tasks from the cached list', async () => {
+  it('drops the tasks whose ids the response lists from the cached list', async () => {
     const { wrapper } = setup()
     client.setQueryData(todoKeys.list, [open, done, done2])
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ count: 2 }), { status: 200 }),
+      new Response(JSON.stringify({ count: 2, ids: [8, 9] }), { status: 200 }),
     )
     const { result } = renderHook(() => useClearCompletedMutation(), {
       wrapper,
@@ -67,6 +67,21 @@ describe('useClearCompletedMutation', () => {
     await act(() => result.current.mutateAsync())
 
     expect(client.getQueryData(todoKeys.list)).toEqual([open])
+  })
+
+  it('keeps a completed task in the cache when the response does not list its id', async () => {
+    const { wrapper } = setup()
+    client.setQueryData(todoKeys.list, [open, done, done2])
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ count: 1, ids: [8] }), { status: 200 }),
+    )
+    const { result } = renderHook(() => useClearCompletedMutation(), {
+      wrapper,
+    })
+
+    await act(() => result.current.mutateAsync())
+
+    expect(client.getQueryData(todoKeys.list)).toEqual([open, done2])
   })
 
   it('rejects with the server detail and keeps the cache on failure', async () => {

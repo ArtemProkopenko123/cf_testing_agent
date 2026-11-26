@@ -199,7 +199,7 @@ it('clears completed tasks, sends the bulk request and reports the count', async
   const open = { ...todoFixture, id: 1, title: 'Open task' }
   const doneA = { ...todoFixture, id: 2, title: 'Done A', completed: true }
   const doneB = { ...todoFixture, id: 3, title: 'Done B', completed: true }
-  serveClear([open, doneA, doneB], () => json({ count: 2 }))
+  serveClear([open, doneA, doneB], () => json({ count: 2, ids: [2, 3] }))
   render(<TodosPage />, { wrapper })
 
   await user.click(await screen.findByRole('button', { name: 'Clear completed' }))
@@ -218,7 +218,7 @@ it('clears completed tasks, sends the bulk request and reports the count', async
 it('uses the singular in the notice when one task was cleared', async () => {
   const { wrapper, user } = setup()
   const doneA = { ...todoFixture, id: 2, title: 'Done A', completed: true }
-  serveClear([doneA], () => json({ count: 1 }))
+  serveClear([doneA], () => json({ count: 1, ids: [2] }))
   render(<TodosPage />, { wrapper })
 
   await user.click(await screen.findByRole('button', { name: 'Clear completed' }))
@@ -226,9 +226,23 @@ it('uses the singular in the notice when one task was cleared', async () => {
   expect(await screen.findByText('Cleared 1 completed task.')).toBeVisible()
 })
 
+it('removes only the tasks whose ids the response lists', async () => {
+  const { wrapper, user } = setup()
+  const doneA = { ...todoFixture, id: 2, title: 'Done A', completed: true }
+  const doneB = { ...todoFixture, id: 3, title: 'Done B', completed: true }
+  serveClear([doneA, doneB], () => json({ count: 1, ids: [2] }))
+  render(<TodosPage />, { wrapper })
+
+  await user.click(await screen.findByRole('button', { name: 'Clear completed' }))
+
+  expect(await screen.findByText('Cleared 1 completed task.')).toBeVisible()
+  expect(screen.queryByText('Done A')).not.toBeInTheDocument()
+  expect(screen.getByText('Done B')).toBeVisible()
+})
+
 it('disables Clear completed when no task is completed', async () => {
   const { wrapper } = setup()
-  serveClear([todoFixture], () => json({ count: 0 }))
+  serveClear([todoFixture], () => json({ count: 0, ids: [] }))
   render(<TodosPage />, { wrapper })
 
   await screen.findByText('Prepare a demo')

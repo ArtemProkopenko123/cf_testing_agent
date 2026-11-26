@@ -5,7 +5,7 @@ import { createTodosRouter } from '../src/features/todos/router.ts';
 import { todo } from './fixture.ts';
 
 function setup() {
-  const repository = { list: vi.fn().mockResolvedValue([todo]), create: vi.fn().mockResolvedValue(todo), get: vi.fn(), update: vi.fn(), delete: vi.fn(), deleteCompleted: vi.fn().mockResolvedValue(0) };
+  const repository = { list: vi.fn().mockResolvedValue([todo]), create: vi.fn().mockResolvedValue(todo), get: vi.fn(), update: vi.fn(), delete: vi.fn(), deleteCompleted: vi.fn().mockResolvedValue({ count: 0, ids: [] }) };
   const app = express();
   app.use(express.json());
   app.use('/api/todos', createTodosRouter(repository));
@@ -101,10 +101,10 @@ it('accepts a title of exactly 120 characters', async () => {
 });
 it('clears completed tasks and returns the deleted count', async () => {
   const { app, repository } = setup();
-  repository.deleteCompleted.mockResolvedValueOnce(3);
+  repository.deleteCompleted.mockResolvedValueOnce({ count: 3, ids: [4, 5, 9] });
   const response = await request(app).delete('/api/todos?completed=true');
   expect(response.status).toBe(200);
-  expect(response.body).toEqual({ count: 3 });
+  expect(response.body).toEqual({ count: 3, ids: [4, 5, 9] });
   expect(repository.deleteCompleted).toHaveBeenCalledOnce();
 });
 it.each(['', '?completed=false', '?completed=maybe', '?completed=true&extra=1', '?other=1'])(

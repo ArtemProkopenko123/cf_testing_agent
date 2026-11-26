@@ -47,8 +47,11 @@ it('sends a cleared due date as null when updating a task', async () => {
 })
 
 it('clears completed tasks with DELETE and the completed=true query', async () => {
-  vi.mocked(request).mockResolvedValue({ count: 3 })
-  await expect(todosApi.clearCompleted()).resolves.toEqual({ count: 3 })
+  vi.mocked(request).mockResolvedValue({ count: 3, ids: [1, 2, 3] })
+  await expect(todosApi.clearCompleted()).resolves.toEqual({
+    count: 3,
+    ids: [1, 2, 3],
+  })
   expect(request).toHaveBeenCalledWith('/todos?completed=true', {
     method: 'DELETE',
   })
