@@ -8,10 +8,10 @@ export function useClearCompletedMutation() {
   return useMutation({
     mutationKey: todoKeys.clearCompleted,
     mutationFn: () => todosApi.clearCompleted(),
-    onSuccess: async () => {
+    onSuccess: async ({ ids }) => {
       await queryClient.cancelQueries({ queryKey: todoKeys.list })
       queryClient.setQueryData<Todo[]>(todoKeys.list, (current) =>
-        current?.filter((todo) => !todo.completed),
+        current?.filter((todo) => !ids.includes(todo.id)),
       )
     },
   })

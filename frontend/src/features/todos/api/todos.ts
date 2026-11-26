@@ -31,6 +31,6 @@ export const todosApi = {
     })
   },
   clearCompleted: () =>
-    request<{ count: number }>('/todos?completed=true', { method: 'DELETE' }),
+    request<{ count: number; ids: number[] }>('/todos?completed=true', { method: 'DELETE' }),
   remove: (id: number) => request<void>(`/todos/${id}`, { method: 'DELETE' }),
 }

@@ -14,7 +14,7 @@ export function createTodosRouter(repository: TodoStore) {
   router.delete('/', async (req, res) => {
     const result = clearCompletedSchema.safeParse(req.query);
     if (!result.success) return res.status(422).json({ detail: result.error.issues });
-    res.json({ count: await repository.deleteCompleted() });
+    res.json(await repository.deleteCompleted());
   });
   router.post('/', async (req, res) => {
     const result = createSchema.safeParse(req.body);
