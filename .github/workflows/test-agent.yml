@@ -283,7 +283,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -q -m "test: add tests from the unit test agent" \
             -m "Verified in the Test agent workflow: only test files, typecheck, all tests and coverage thresholds pass." \
-            -m "[unit-test-agent]"
+            -m "[unit-test-agent] [skip ci]"
           git push -q
           echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
