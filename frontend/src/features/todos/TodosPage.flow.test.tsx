@@ -188,6 +188,87 @@ it('closes the new-task editor after a save and tells the user it was added', as
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 
+function serveClear(list: Todo[], clear: () => Promise<Response>) {
+  fetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+    init?.method === 'DELETE' ? clear() : json(list),
+  )
+}
+
+it('clears completed tasks, sends the bulk request and reports the count', async () => {
+  const { wrapper, user } = setup()
+  const open = { ...todoFixture, id: 1, title: 'Open task' }
+  const doneA = { ...todoFixture, id: 2, title: 'Done A', completed: true }
+  const doneB = { ...todoFixture, id: 3, title: 'Done B', completed: true }
+  serveClear([open, doneA, doneB], () => json({ count: 2 }))
+  render(<TodosPage />, { wrapper })
+
+  await user.click(await screen.findByRole('button', { name: 'Clear completed' }))
+
+  expect(await screen.findByText('Cleared 2 completed tasks.')).toBeVisible()
+  const [url, init] = fetchMock.mock.calls.find(
+    ([, call]) => call?.method === 'DELETE',
+  ) as [string, RequestInit]
+  expect(url).toBe('/api/todos?completed=true')
+  expect(init.method).toBe('DELETE')
+  expect(screen.queryByText('Done A')).not.toBeInTheDocument()
+  expect(screen.queryByText('Done B')).not.toBeInTheDocument()
+  expect(screen.getByText('Open task')).toBeVisible()
+})
+
+it('uses the singular in the notice when one task was cleared', async () => {
+  const { wrapper, user } = setup()
+  const doneA = { ...todoFixture, id: 2, title: 'Done A', completed: true }
+  serveClear([doneA], () => json({ count: 1 }))
+  render(<TodosPage />, { wrapper })
+
+  await user.click(await screen.findByRole('button', { name: 'Clear completed' }))
+
+  expect(await screen.findByText('Cleared 1 completed task.')).toBeVisible()
+})
+
+it('disables Clear completed when no task is completed', async () => {
+  const { wrapper } = setup()
+  serveClear([todoFixture], () => json({ count: 0 }))
+  render(<TodosPage />, { wrapper })
+
+  await screen.findByText('Prepare a demo')
+  expect(screen.getByRole('button', { name: 'Clear completed' })).toBeDisabled()
+})
+
+it('disables Clear completed while another operation is running', async () => {
+  const { wrapper, user } = setup()
+  const done = { ...todoFixture, completed: true }
+  // The update never settles, so the page stays busy.
+  fetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+    init?.method === 'PATCH' ? new Promise<Response>(() => {}) : json([done]),
+  )
+  render(<TodosPage />, { wrapper })
+
+  await user.click(
+    await screen.findByRole('checkbox', {
+      name: 'Mark as active: Prepare a demo',
+    }),
+  )
+
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Clear completed' })).toBeDisabled(),
+  )
+})
+
+it('shows the server message in the alert when clearing fails and keeps the tasks', async () => {
+  const { wrapper, user } = setup()
+  const done = { ...todoFixture, completed: true }
+  serveClear([done], () => json({ detail: 'Could not clear tasks.' }, 500))
+  render(<TodosPage />, { wrapper })
+
+  await user.click(await screen.findByRole('button', { name: 'Clear completed' }))
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Could not clear tasks.',
+  )
+  expect(screen.getByText('Prepare a demo')).toBeVisible()
+})
+
 it('deletes a task after confirmation and tells the user it was deleted', async () => {
   const { wrapper, user } = setup()
   fetchMock.mockImplementation((_url: string, init?: RequestInit) =>
